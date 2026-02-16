@@ -80,10 +80,10 @@ with st.sidebar:
     st.header("🏦 3. Pension & EV")
     s_ee_p = st.slider("Your Pension %", 0, 80, 5)
     s_er_p = st.slider("Employer Pension %", 0, 20, 3)
-    s_p_on_b = st.toggle("Pension on Bonus", value=True)
+    s_p_on_b = st.toggle("Pension on Bonus", value=False)
     
     s_ev_m = st.number_input("Monthly EV Lease (£)", value=0)
-    s_p11d = st.number_input("Car P11D Value (£)", value=40000)
+    s_p11d = st.number_input("Car P11D Value (£)", value=0)
     s_other = st.number_input("Other Sacrifice (£/mo)", value=0)
 
 # --- Process Results ---
@@ -139,3 +139,4 @@ with tab3:
 with tab4:
     csv = comp_df.to_csv(index=False).encode('utf-8')
     st.download_button("📥 Download CSV", data=csv, file_name="tax_analysis.csv")
+
