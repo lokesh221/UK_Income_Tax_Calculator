@@ -79,13 +79,13 @@ with st.expander("🏦 Pension & Family"):
     er_p_in = st.number_input("Employer Pension %", value=3, step=1)
     er_p = st.slider("Adjust Employer %", 0, 25, int(er_p_in), label_visibility="collapsed")
     
-    p_on_b = st.toggle("Pension on Bonus", value=True)
+    p_on_b = st.toggle("Pension on Bonus", value=False)
     kids = st.segmented_control("Number of Children", [0, 1, 2, 3, 4], default=0)
 
 # 3. EV & Sacrifice
 with st.expander("⚡ EV & Extras"):
     s_ev_m = st.number_input("Monthly EV Lease (£)", value=0)
-    s_p11d = st.number_input("Car P11D Value (£)", value=40000)
+    s_p11d = st.number_input("Car P11D Value (£)", value=0)
     s_other = st.number_input("Other Sacrifice (£/mo)", value=0)
 
 # --- Calculations ---
@@ -134,3 +134,4 @@ with tab3:
 
 with tab4:
     st.download_button("📥 Export CSV", data=comp_df.to_csv(index=False).encode('utf-8'), file_name="uk_tax_calc.csv")
+
