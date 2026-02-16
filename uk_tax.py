@@ -16,6 +16,12 @@ st.markdown("""
 # --- Constants ---
 ANN_PEN_ALLOWANCE = 60000
 
+# --- State Management (Save Profile) ---
+if 'profile' not in st.session_state:
+    st.session_state.profile = {
+        "base": 110000, "bonus": 0, "ee_p": 5, "er_p": 3, "kids": 0
+    }
+
 # --- Core Logic Engine ---
 def calculate_finances(gross, bonus, ee_pct, er_pct, p_on_b, ev_lease, ev_p11d, other_sac_m, kids):
     total_gross = gross + bonus
@@ -45,7 +51,8 @@ def calculate_finances(gross, bonus, ee_pct, er_pct, p_on_b, ev_lease, ev_p11d, 
     cb_charge = 0
     if kids > 0 and adj_net_income > 60000:
         total_cb = 1331.20 + ((kids - 1) * 881.40 if kids > 1 else 0)
-        cb_charge = total_cb * min(1.0, (adj_net_income - 60000) / 20000)
+        charge_pct = min(1.0, (adj_net_income - 60000) / 20000)
+        cb_charge = total_cb * charge_pct
         
     take_home = taxable_gross - tax - ni - cb_charge
     return {
@@ -59,34 +66,41 @@ st.title("🇬🇧 UK Tax Master")
 
 # 1. Salary & Bonus (Hybrid)
 with st.expander("💸 Salary & Bonus", expanded=True):
-    s_base_in = st.number_input("Base Salary (£)", value=110000, step=1000)
+    s_base_in = st.number_input("Base Salary (£)", value=st.session_state.profile["base"], step=1000)
     s_base = st.slider("Adjust Base Salary", 10000, 250000, int(s_base_in), label_visibility="collapsed")
     
     b_type = st.segmented_control("Bonus Type", ["Amount (£)", "Percentage (%)"], default="Amount (£)")
     if b_type == "Amount (£)":
-        b_amt_in = st.number_input("Bonus Amount (£)", value=0, step=500)
+        b_amt_in = st.number_input("Bonus Amount (£)", value=st.session_state.profile["bonus"], step=500)
         s_bonus = st.slider("Adjust Bonus Amount", 0, 100000, int(b_amt_in), label_visibility="collapsed")
     else:
         b_pct_in = st.number_input("Bonus %", value=0.0, step=0.5)
         b_pct = st.slider("Adjust Bonus %", 0.0, 100.0, float(b_pct_in), label_visibility="collapsed")
         s_bonus = s_base * (b_pct / 100)
 
-# 2. Pension & Family (Hybrid Restored)
+# 2. Pension & Family
 with st.expander("🏦 Pension & Family"):
-    ee_p_in = st.number_input("Your Pension Contribution %", value=5, step=1)
+    ee_p_in = st.number_input("Your Pension %", value=st.session_state.profile["ee_p"], step=1)
     ee_p = st.slider("Adjust Pension %", 0, 80, int(ee_p_in), label_visibility="collapsed")
     
-    er_p_in = st.number_input("Employer Pension %", value=3, step=1)
+    er_p_in = st.number_input("Employer Pension %", value=st.session_state.profile["er_p"], step=1)
     er_p = st.slider("Adjust Employer %", 0, 25, int(er_p_in), label_visibility="collapsed")
     
+    # UPDATED DEFAULT: Set to False
     p_on_b = st.toggle("Pension on Bonus", value=False)
-    kids = st.segmented_control("Number of Children", [0, 1, 2, 3, 4], default=0)
+    kids = st.segmented_control("Number of Children", [0, 1, 2, 3, 4], default=st.session_state.profile["kids"])
 
 # 3. EV & Sacrifice
 with st.expander("⚡ EV & Extras"):
     s_ev_m = st.number_input("Monthly EV Lease (£)", value=0)
+    # UPDATED DEFAULT: Set to 0
     s_p11d = st.number_input("Car P11D Value (£)", value=0)
     s_other = st.number_input("Other Sacrifice (£/mo)", value=0)
+
+# Save Profile Logic
+if st.button("💾 Save Profile (Local)"):
+    st.session_state.profile = {"base": s_base, "bonus": s_bonus, "ee_p": ee_p, "er_p": er_p, "kids": kids}
+    st.success("Profile saved! These values will load the next time you refresh.")
 
 # --- Calculations ---
 res = calculate_finances(s_base, s_bonus, ee_p, er_p, p_on_b, s_ev_m, s_p11d, s_other, kids)
@@ -96,7 +110,7 @@ st.divider()
 st.metric("Monthly Take Home", f"£{res['take_home']/12:,.2f}")
 
 # --- Tabs ---
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Split", "🔄 Compare", "🚀 Optimizer", "📄 Details"])
+tab1, tab2, tab3 = st.tabs(["📊 Split", "🔄 Compare", "🚀 Optimizer"])
 
 with tab1:
     fig = go.Figure(data=[go.Pie(
@@ -115,7 +129,6 @@ with tab2:
         "No EV": [f"£{res_no['take_home']/12:,.2f}", f"£{res_no['take_home']:,.2f}", f"£{res_no['tax']+res_no['ni']:,.2f}", f"£{res_no['cb_charge']:,.2f}", f"£{res_no['total_package']:,.2f}"]
     })
     st.table(comp_df)
-    st.info(f"💡 Real monthly cost of car: **£{(res_no['take_home'] - res['take_home']) / 12:,.2f}**")
 
 with tab3:
     if 100000 < res['adj_net'] < 125140:
@@ -131,7 +144,3 @@ with tab3:
     usage = (res['total_pot'] / ANN_PEN_ALLOWANCE)
     st.progress(usage if usage <= 1 else 1.0)
     st.metric("Remaining 60k Allowance", f"£{ANN_PEN_ALLOWANCE - res['total_pot']:,.2f}")
-
-with tab4:
-    st.download_button("📥 Export CSV", data=comp_df.to_csv(index=False).encode('utf-8'), file_name="uk_tax_calc.csv")
-
